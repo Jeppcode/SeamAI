@@ -1,0 +1,5 @@
+This folder contains a script that collects data from a data collection of video and json pairs and creates one master json file with data from all of the instances.
+
+The script also runs mediapipe to enrich the dataset with skeletal landmarks, and angles. 
+
+Do note that if a video has no skeletal landmarks then it is excluded from the final dataset.

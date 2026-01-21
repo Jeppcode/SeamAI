@@ -1,0 +1,8 @@
+For future user
+##################################################################################
+
+In this folder I have the scripts used for automatic labeling.
+
+always_on.py was used to keep tracking running just for viewing purposes, it has a mode for collecting data and for not collecting data, where it simply shows the tracking but saves nothing.
+
+data_collection.py is a collection script. Why there are two is because I cannot recall which one was used for the actual collection. Recommended to test both.

@@ -1,0 +1,4 @@
+In this folder are the files used for performing the trajectory prediction.
+
+Including the main script, scripts where models are defined, data is defined,
+and configurations are defined.
