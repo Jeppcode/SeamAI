@@ -1,0 +1,383 @@
+#? segmentation only baseline pipeline, works on a single image or a video file
+
+from __future__ import annotations
+
+import json
+import logging
+import sys
+import termios
+import time
+import tty
+from datetime import datetime
+from pathlib import Path
+
+import cv2
+import numpy as np
+
+import config
+import seg_utils
+
+#? user settings
+#? set IMAGE_PATH for a single image or VIDEO_PATH for a video, leave both empty to get the selector
+
+IMAGE_PATH = ""
+VIDEO_PATH = ""
+RUN_NAME = ""
+
+#? video only: frames to skip between samples, 0 uses FRAME_SAMPLE_EVERY from config.py
+FRAME_EVERY = 0
+
+#? set to False to skip saving annotated frames
+SAVE_ANNOTATED = True
+
+#? logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(levelname)-8s  %(message)s",
+    datefmt="%H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
+
+#? prompts the user to enter a run name, falls back to a timestamp if left empty
+def _prompt_run_name():
+    name = input("Enter a name for this run (leave blank for auto timestamp): ").strip()
+    if not name:
+        name = f"seg_only_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        print(f"Using auto name: {name}")
+    print("")
+    return name
+
+#? entry point, runs image mode if IMAGE_PATH is set, otherwise asks the user to pick a mode
+def main():
+    if IMAGE_PATH:
+        print("-------------------------------")
+        print("---- RUNNING ON IMAGE MODE ----")
+        print("-------------------------------")
+        _run_image()
+        return
+    print("-------------------------------")
+    print("---- RUNNING ON VIDEO MODE ----")
+    print("-------------------------------")
+    mode, files, prefix = _select_run_mode()
+    if mode == "all":
+        for f in files:
+            run_name = f"{prefix}_{f.stem}" if prefix else f.stem
+            print(f"\nProcessing: {f.name}")
+            _run_video(video_path_override=str(f), run_name_override=run_name)
+    else:
+        _run_video()
+
+
+#? image mode
+#? processes a single image file, same output structure as video mode
+def _run_image():
+    img_path = Path(IMAGE_PATH).expanduser().resolve()
+    if not img_path.exists():
+        logger.error("Image file not found: %s", img_path)
+        sys.exit(1)
+
+    frame = cv2.imread(str(img_path))
+    if frame is None:
+        logger.error("Could not read image: %s", img_path)
+        sys.exit(1)
+
+    height, width = frame.shape[:2]
+    run_name = RUN_NAME or _prompt_run_name()
+    run_dir, frames_dir, annotated_dir, logs_dir = _make_run_dirs(run_name)
+
+    seg_utils.load_seg_model()
+    logger.info("Image: %s  |  %dx%d  |  Output -> %s", img_path.name, width, height, run_dir)
+
+    run_meta = {
+        "setup": "seg_only",
+        "mode": "image",
+        "source": str(img_path),
+        "run_name": run_name,
+        "seg_model": config.SEG_MODEL_NAME,
+        "started_at": datetime.now().isoformat(),
+        "resolution": [width, height],
+    }
+    (run_dir / "config.json").write_text(json.dumps(run_meta, indent=2))
+
+    log_fh = (logs_dir / "seg_results.jsonl").open("w", encoding="utf-8")
+    t0 = time.time()
+
+    record = _process_frame(frame, 0, 0.0, frames_dir, annotated_dir, log_fh)
+
+    log_fh.close()
+    t_elapsed = time.time() - t0
+
+    summary = {
+        "frames_processed": 1,
+        "frames_with_obstacles": 1 if record["danger_detected"] else 0,
+        "obstacle_rate": 1.0 if record["danger_detected"] else 0.0,
+        "total_time_s": round(t_elapsed, 2),
+        "avg_inference_s": round(record["inference_time_s"], 3),
+    }
+    (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
+
+    status = "DANGER" if record["danger_detected"] else ("CONTEXT" if record["context_detected"] else "CLEAR")
+    logger.info("Done.  Result: %s  |  %.2f s  |  Saved to: %s", status, t_elapsed, run_dir)
+
+
+#? video mode
+#? processes a video file frame by frame using the same output structure as image mode
+def _run_video(video_path_override=None, run_name_override=None):
+    global VIDEO_PATH
+    if video_path_override:
+        video_path = Path(video_path_override).expanduser().resolve()
+    else:
+        if not VIDEO_PATH:
+            VIDEO_PATH = _pick_video_file()
+        video_path = Path(VIDEO_PATH).expanduser().resolve()
+
+    if not video_path.exists():
+        logger.error("Video file not found: %s", video_path)
+        sys.exit(1)
+
+    run_name = run_name_override or RUN_NAME or _prompt_run_name()
+    run_dir, frames_dir, annotated_dir, logs_dir = _make_run_dirs(run_name)
+
+    every = FRAME_EVERY or config.FRAME_SAMPLE_EVERY
+
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        logger.error("Cannot open video: %s", video_path)
+        sys.exit(1)
+
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    logger.info("Video: %s  |  %d frames  |  %.1f fps  |  %dx%d", video_path.name, total_frames, fps, width, height)
+    logger.info("Sampling every %d frame(s). Output -> %s", every, run_dir)
+
+    seg_utils.load_seg_model()
+
+    run_meta = {
+        "setup": "seg_only",
+        "mode": "video",
+        "source": str(video_path),
+        "run_name": run_name,
+        "seg_model": config.SEG_MODEL_NAME,
+        "frame_sample_every": every,
+        "operating_zone_bottom_exclude": config.OPERATING_ZONE_BOTTOM_EXCLUDE,
+        "obstacle_classes": config.SEG_OBSTACLE_CLASSES,
+        "obstacle_min_pixel_fraction": config.SEG_OBSTACLE_MIN_PIXEL_FRACTION,
+        "started_at": datetime.now().isoformat(),
+        "video_fps": fps,
+        "video_resolution": [width, height],
+    }
+    (run_dir / "config.json").write_text(json.dumps(run_meta, indent=2))
+
+    log_fh = (logs_dir / "seg_results.jsonl").open("w", encoding="utf-8")
+
+    frame_idx = 0
+    processed = 0
+    obstacles_detected = 0
+    t_start = time.time()
+
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            if frame_idx % every != 0:
+                frame_idx += 1
+                continue
+
+            record = _process_frame(frame, frame_idx, frame_idx / fps, frames_dir, annotated_dir, log_fh)
+
+            processed += 1
+            if record["danger_detected"]:
+                obstacles_detected += 1
+
+            if processed % 20 == 0 or record["danger_detected"]:
+                pct = frame_idx / max(total_frames, 1) * 100
+                status = "  OBSTACLE" if record["danger_detected"] else ""
+                logger.info("[%5.1f%%] frame %06d  |  %.2f s/frame%s",
+                            pct, frame_idx, record["inference_time_s"], status)
+
+            frame_idx += 1
+
+    finally:
+        cap.release()
+        log_fh.close()
+
+    total_time = time.time() - t_start
+    summary = {
+        "frames_processed": processed,
+        "frames_with_obstacles": obstacles_detected,
+        "obstacle_rate": round(obstacles_detected / max(processed, 1), 4),
+        "total_time_s": round(total_time, 2),
+        "avg_inference_s": round(total_time / max(processed, 1), 3),
+    }
+    (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
+
+    logger.info("Done.  %d/%d frames had obstacles (%.1f%%)",
+                obstacles_detected, processed, summary["obstacle_rate"] * 100)
+    logger.info("Results saved to: %s", run_dir)
+
+
+#? frame processing
+#? shared logic, runs segmentation on one frame, saves outputs, writes log entry
+def _process_frame(frame: np.ndarray, frame_idx: int, video_ts: float, frames_dir: Path, annotated_dir: Path, log_fh):
+    jpeg_params = [cv2.IMWRITE_JPEG_QUALITY, config.JPEG_QUALITY]
+    frame_stem = f"frame_{frame_idx:06d}"
+
+    t0 = time.time()
+    mask, classes_present, annotated = seg_utils.run_segmentation(frame)
+    danger_detected, context_detected, detections = seg_utils.get_obstacle_info(mask)
+    inference_time = time.time() - t0
+
+    #? in seg_only mode only the central danger zone triggers a flag, side context zones are ignored
+    cv2.imwrite(str(frames_dir / f"{frame_stem}.jpg"), frame, jpeg_params)
+
+    if SAVE_ANNOTATED:
+        ann = seg_utils.draw_obstacle_labels(annotated, detections, danger_detected, context_detected)
+        if video_ts > 0:
+            _draw_timestamp(ann, video_ts, frame_idx)
+        cv2.imwrite(str(annotated_dir / f"{frame_stem}.jpg"), ann, jpeg_params)
+
+    record = {
+        "frame_index": frame_idx,
+        "video_timestamp_s": round(video_ts, 3),
+        "danger_detected": danger_detected,
+        "context_detected": context_detected,
+        "detections": detections,
+        "classes_present": sorted(classes_present),
+        "inference_time_s": round(inference_time, 3),
+    }
+    log_fh.write(json.dumps(record) + "\n")
+    log_fh.flush()
+    return record
+
+
+#? helpers
+#? creates and returns the four run output directories
+def _make_run_dirs(run_name: str):
+    run_dir = config.RUNS_DIR_SEG_ONLY / run_name
+    frames_dir = run_dir / "frames"
+    annotated_dir = run_dir / "annotated"
+    logs_dir = run_dir / "logs"
+    for d in (frames_dir, annotated_dir, logs_dir):
+        d.mkdir(parents=True, exist_ok=True)
+    return run_dir, frames_dir, annotated_dir, logs_dir
+
+#? draws the video timestamp and frame index in the bottom-left corner of the frame
+def _draw_timestamp(frame: np.ndarray, video_ts: float, frame_idx: int):
+    minutes = int(video_ts // 60)
+    seconds = video_ts % 60
+    text = f"t={minutes:02d}:{seconds:05.2f}  frame={frame_idx}"
+    cv2.putText(frame, text, (10, frame.shape[0] - 12),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1, cv2.LINE_AA)
+
+#? returns a sorted list of video files from outside_data_collection
+def _list_video_files():
+    d_path = Path(__file__).parent / "recordings" / "outside_data_collection"
+    if not d_path.exists():
+        logger.error("Folder not found: %s", d_path)
+        sys.exit(1)
+    files = sorted([f for f in d_path.iterdir()
+                    if f.is_file() and f.suffix.lower() in ('.mp4', '.avi', '.mkv', '.mov')])
+    if not files:
+        logger.error("No video files found in %s", d_path)
+        sys.exit(1)
+    return files
+
+#? lists available videos then asks the user to process all or pick one
+def _select_run_mode():
+    files = _list_video_files()
+    print("\nAvailable videos:")
+    for i, f in enumerate(files):
+        print(f"  {i + 1}) {f.name}")
+    print("")
+    while True:
+        choice = input("Process [all] videos or [pick] one? ").strip().lower()
+        if choice in ("all", "pick"):
+            break
+        print("Please enter 'all' or 'pick'.")
+    if choice == "all":
+        prefix = input("Enter a keyword prefix for the run names: ").strip()
+        print("")
+        return "all", files, prefix
+    return "pick", files, ""
+
+#? shows an interactive terminal selector and returns the chosen video path as a string
+def _pick_video_file():
+    files = _list_video_files()
+    options = []
+    for f in files:
+        dt = datetime.fromtimestamp(f.stat().st_mtime)
+        options.append(f"{f.name} ({dt.strftime('%A %-d %B - %Hh%M')})")
+
+    print("Select a video file to test:")
+    selected_idx = -1
+
+    if sys.stdout.isatty() and sys.stdin.isatty():
+        print("Use UP/DOWN arrows to select, ENTER to confirm:")
+        for _ in options:
+            print()
+        sys.stdout.write(f"\033[{len(options)}A")
+        sys.stdout.flush()
+
+        current_idx = 0
+        fd = sys.stdin.fileno()
+        try:
+            old_settings = termios.tcgetattr(fd)
+            tty.setcbreak(fd)
+            while True:
+                sys.stdout.write("\r")
+                for i, opt in enumerate(options):
+                    prefix = " > " if i == current_idx else "   "
+                    sys.stdout.write(f"\033[K{prefix}{opt}\n")
+                sys.stdout.write(f"\033[{len(options)}A")
+                sys.stdout.flush()
+
+                ch = sys.stdin.read(1)
+                if ch == '\x1b':
+                    ch2 = sys.stdin.read(2)
+                    if ch2 == '[A':
+                        current_idx = max(0, current_idx - 1)
+                    elif ch2 == '[B':
+                        current_idx = min(len(options) - 1, current_idx + 1)
+                elif ch in ('\n', '\r'):
+                    sys.stdout.write(f"\033[{len(options)}B")
+                    sys.stdout.flush()
+                    selected_idx = current_idx
+                    break
+                elif ch == '\x03':
+                    sys.stdout.write(f"\033[{len(options)}B")
+                    sys.stdout.flush()
+                    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                    sys.exit(1)
+        except Exception:
+            selected_idx = -1
+        finally:
+            if 'old_settings' in locals():
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+    if selected_idx == -1:
+        for i, opt in enumerate(options):
+            print(f" {i+1}) {opt}")
+        while True:
+            try:
+                choice = int(input("Enter number: "))
+                if 1 <= choice <= len(options):
+                    selected_idx = choice - 1
+                    break
+                print("Invalid choice.")
+            except ValueError:
+                print("Please enter a valid number.")
+            except EOFError:
+                sys.exit(1)
+
+    print(f"\nSelected: {files[selected_idx].name}\n")
+    return str(files[selected_idx])
+
+
+if __name__ == "__main__":
+    main()
