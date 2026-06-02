@@ -28,6 +28,7 @@ the full list and schema.)
 ```
 intent_prediction_2026/
   requirements.txt        # Python dependencies for the virtual environment (see Setup)
+  check_env.py            # run first: checks torch/cuda/cv2/ultralytics are available
   data_collection/        # START HERE — the live collection script + its README
     pose_data_collection.py
     README.md
@@ -40,20 +41,27 @@ intent_prediction_2026/
 The collection script is **self-contained** (it imports no other project code)
 and writes its dataset to `data/` by default.
 
-## Setup
+## Setup (Jetson)
 
-Create a virtual environment in this folder and install the dependencies:
+**Prerequisite:** this assumes CUDA-enabled **PyTorch + torchvision**, **OpenCV**
+and **NumPy** are already installed *globally* on the Jetson (as they are on the
+lab Jetson). The per-user virtual environment reuses them via
+`--system-site-packages`, so you only add `ultralytics` on top.
 
 ```bash
-python3 -m venv .venv
+git clone <repo> && cd intent_prediction_2026
+python3 check_env.py                            # confirms the globals (torch/cuda/cv2/numpy) are present
+python3 -m venv .venv --system-site-packages    # reuse the global torch / cv2 / numpy
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt                 # adds ultralytics
+python data_collection/pose_data_collection.py
 ```
 
-On the Jetson, install PyTorch from NVIDIA's Jetson wheels **before** this step —
-see the notes at the top of `requirements.txt`. The dependencies are only for
-`data_collection/`; `feature_extraction/` runs on the standard library alone.
+`check_env.py` reports up front whether the globals are in place and what to do
+next. `feature_extraction/` needs no third-party packages — it runs on the
+standard library alone.
 
-## Privacy
 
-These scripts record identifiable video and pose data of people; handle it accordingly.
+
+
+

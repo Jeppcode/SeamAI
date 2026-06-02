@@ -109,7 +109,7 @@ CAMERA_DIST = [-0.290496, 0.07539763, -0.00075077, -0.00159761, -0.00811828]
 class CollectorConfig:
     # Perception
     model: str = "yolo11n-pose.pt"   # pose model; .pt for testing, .engine on the Jetson
-    tracker: str = "botsort.yaml"
+    tracker: str = "bytetrack.yaml"  # lighter than botsort.yaml; BoT-SORT's per-frame motion compensation is wasted on a fixed camera
     conf: float = 0.3
     imgsz: int = 640
 
@@ -464,6 +464,9 @@ class LivePoseCollector:
         self._fps_frames = 0
         self._fps_t0 = time.time()
         self._status_t0 = time.time()
+        self._stage_ms = {"read": 0.0, "undistort": 0.0, "track+proc": 0.0, "draw": 0.0}
+        self._stage_n = 0
+        self._first_shape = None
 
         if cfg.save_clips:
             print(f"[INIT] output: {self.date_dir}  session: {self.sess_str}  "
@@ -484,12 +487,17 @@ class LivePoseCollector:
                 (self.frame_width, self.frame_height))
             self.map1, self.map2 = cv2.initUndistortRectifyMap(
                 self.mtx, self.dist, None, self.newmtx,
-                (self.frame_width, self.frame_height), cv2.CV_32FC1)
+                (self.frame_width, self.frame_height), cv2.CV_16SC2)  # fixed-point maps: faster remap
             self.clean_width, self.clean_height = self.roi[2], self.roi[3]
             mode = "remap+crop"
         elif apply_undistort:
+            # Precompute the undistort maps once (same result as cv2.undistort,
+            # but remap per frame is far cheaper than recomputing the map each call).
+            self.map1, self.map2 = cv2.initUndistortRectifyMap(
+                self.mtx, self.dist, None, self.mtx,
+                (self.frame_width, self.frame_height), cv2.CV_16SC2)  # fixed-point maps: faster remap
             self.clean_width, self.clean_height = self.frame_width, self.frame_height
-            mode = "undistort"
+            mode = "undistort (remap)"
         else:
             self.clean_width, self.clean_height = self.frame_width, self.frame_height
             mode = "none"
@@ -662,11 +670,11 @@ class LivePoseCollector:
         if not self.apply_undistort:
             return frame
         cv2 = self.cv2
+        frame = cv2.remap(frame, self.map1, self.map2, interpolation=cv2.INTER_LINEAR)
         if self.cfg.distort:
-            frame = cv2.remap(frame, self.map1, self.map2, interpolation=cv2.INTER_LINEAR)
             x, y, w, h = self.roi
             return frame[y:y + h, x:x + w]
-        return cv2.undistort(frame, self.mtx, self.dist, None, self.mtx)
+        return frame
 
     def _extract_detections(self, result):
         """Return [(track_id, bbox[4], center[2], keypoints[17] or None), ...]."""
@@ -778,6 +786,8 @@ class LivePoseCollector:
             cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.cfg.cap_width)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.cfg.cap_height)
+        cap.set(cv2.CAP_PROP_FPS, 30)            # request 30; the camera may still cap lower
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)      # keep only the newest frame (low latency)
         return cap
 
     def run(self, display: bool = True):
@@ -801,13 +811,25 @@ class LivePoseCollector:
 
         try:
             while True:
+                t0 = time.perf_counter()
                 ret, frame = self.cap.read()
+                t_now = time.perf_counter()          # read done (also the per-frame timestamp)
                 if not ret:
                     print("[RUN] Camera read failed; stopping.")
                     break
-                t_now = time.perf_counter()
                 clean = self._undistort(frame)
+                t_und = time.perf_counter()
                 dets = self._process_frame(clean, t_now)
+                t_proc = time.perf_counter()
+
+                if self.cfg.debug:
+                    self._stage_ms["read"] += (t_now - t0) * 1000.0
+                    self._stage_ms["undistort"] += (t_und - t_now) * 1000.0
+                    self._stage_ms["track+proc"] += (t_proc - t_und) * 1000.0
+                    self._stage_n += 1
+                    if self._first_shape is None:
+                        self._first_shape = clean.shape
+                        print(f"[DEBUG] actual captured frame shape: {clean.shape}")
 
                 self._fps_frames += 1
                 now = time.time()
@@ -819,16 +841,31 @@ class LivePoseCollector:
                     self._status_t0 = now
                     c = self.counts
                     word = "recording" if self.cfg.save_clips else "monitoring"
-                    print(f"[..] {word}  fps={self._fps}  tracking={len(self.active)}  "
-                          f"|  enter={c['enter']} pass={c['pass']} exit={c['exit']} removed={c['removed']}")
+                    msg = (f"[..] {word}  fps={self._fps}  tracking={len(self.active)}  "
+                           f"|  enter={c['enter']} pass={c['pass']} exit={c['exit']} removed={c['removed']}")
+                    if self.cfg.debug and self._stage_n:
+                        n = self._stage_n
+                        msg += ("  ||  per-frame ms:"
+                                f" read={self._stage_ms['read'] / n:.1f}"
+                                f" undistort={self._stage_ms['undistort'] / n:.1f}"
+                                f" track+proc={self._stage_ms['track+proc'] / n:.1f}"
+                                f" draw={self._stage_ms['draw'] / n:.1f}")
+                        for k in self._stage_ms:
+                            self._stage_ms[k] = 0.0
+                        self._stage_n = 0
+                    print(msg)
 
                 if display:
+                    t_d = time.perf_counter()
                     disp = clean.copy()
                     self._draw_overlay(disp, dets)
                     if not self.cfg.fullscreen:
                         disp = cv2.resize(disp, (960, 540))
                     cv2.imshow("Pose Data Collection", disp)
-                    if cv2.waitKey(1) & 0xFF == ord("q"):
+                    key = cv2.waitKey(1) & 0xFF
+                    if self.cfg.debug:
+                        self._stage_ms["draw"] += (time.perf_counter() - t_d) * 1000.0
+                    if key == ord("q"):
                         break
         except KeyboardInterrupt:
             print("\n[RUN] Stopped by user (Ctrl+C).")
@@ -888,15 +925,20 @@ def main() -> int:
     # `python pose_data_collection.py`). No command-line arguments are needed. #
     # ----------------------------------------------------------------------- #
     cfg = CollectorConfig(
-        model="yolo11n-pose.pt",     # .pt for testing; on the Jetson use the .engine
+        # --- perception / speed knobs ---
+        model="yolo11n-pose.engine", # built locally via export_engine.py (use "yolo11n-pose.pt" on a fresh clone)
+        tracker="bytetrack.yaml",    # FPS: lighter than botsort.yaml on a fixed camera (no motion comp.)
+        imgsz=640,                   # FPS: lower (e.g. 480) trades a little accuracy for speed
+        # --- camera / geometry ---
         camera_index=0,
         ellipse_axes=(480, 130),     # door entrance region (half-ellipse)
         distort=False,               # False -> cv2.undistort, True -> remap + crop
+        # --- run mode ---
         fullscreen=True,
         save_clips=True,             # False -> track + label + show, but write nothing (monitor)
-        print_labels=True,           # print a line each time a person is labeled enter/pass/exit
-        headless=False,              # True -> no window (screenless Jetson; stop with Ctrl+C)
-        debug=False,
+        print_labels=False,           # print a line each time a person is labeled enter/pass/exit
+        headless=False,               # no preview window (faster); set False to watch the live window
+        debug=False,                  # prints the per-frame ms breakdown; set False for normal runs
         session_note="",             # optional free-text note saved in each clip's metadata
     )
 
@@ -909,3 +951,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+

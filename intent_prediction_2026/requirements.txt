@@ -1,62 +1,27 @@
 # =============================================================================
 # requirements.txt — intent_prediction_2026
-# Pose-based pedestrian intent: data collection + feature extraction
-# KTH / RISE — Jesper Malmgren
+# Pose-based pedestrian intent: data collection + feature extraction.
 #
-# Create a virtual environment in this folder and install into it:
-#     python3 -m venv .venv
+# Prerequisite (Jetson): CUDA-enabled PyTorch + torchvision, OpenCV and NumPy are
+# already installed GLOBALLY on the device (see README, "Setup (Jetson)"). Make
+# the venv inherit them, then install this file on top:
+#
+#     python3 -m venv .venv --system-site-packages
 #     source .venv/bin/activate
 #     pip install -r requirements.txt
 #
-# What needs what:
-#   data_collection/pose_data_collection.py   ->  ultralytics, opencv, numpy
-#   feature_extraction/extract_features.py     ->  nothing (Python standard library only)
-#
-# -----------------------------------------------------------------------------
-# JETSON ORIN NANO (the deployment target)
-#   PyTorch must come from NVIDIA's Jetson wheels, NOT from PyPI. A plain
-#   `pip install torch` pulls a wheel that will not run on the Jetson.
-#
-#   1. Flash JetPack 6.2+ (CUDA 12.6, cuDNN 9.3); it ships Python 3.10.
-#   2. Install torch + torchvision FIRST, from the Jetson AI Lab index:
-#        pip install torch torchvision --index-url https://pypi.jetson-ai-lab.dev/jp6/cu126
-#      (or NVIDIA's official Jetson PyTorch wheels).
-#   3. THEN install this file:
-#        pip install -r requirements.txt
-#      ultralytics needs torch, but since it is already installed from the
-#      NVIDIA wheel, pip leaves it as-is.
-#
-#   OpenCV: JetPack ships an OpenCV build; if you rely on that you can drop the
-#   opencv line below. The pip `opencv-python` wheel also works and is required
-#   for the on-screen display window. Use `opencv-python-headless` only if you always
-#   run headless (headless=True in main()).
-#
-#   TensorRT (.engine): tensorrt ships with JetPack. To export a .engine from a
-#   .pt model you also need onnx + onnxruntime-gpu (see the optional block).
-#
-# MACOS / x86 LINUX (for testing the logic off-device)
-#   Just `pip install -r requirements.txt`; ultralytics pulls a compatible torch
-#   from PyPI automatically. Use a .pt model (.engine files are Jetson-specific).
+# This file does NOT install torch/torchvision from PyPI — on the Jetson those are
+# the global, CUDA-enabled builds. It adds ultralytics, plus pinned numpy/opencv
+# that stay compatible with the Jetson torch (see comments below).
+# feature_extraction/ needs nothing here (Python standard library only).
 # =============================================================================
 
-# ─── Deep learning framework ────────────────────────────────────────────────
-# On Jetson: install these FIRST from NVIDIA (see notes above) — do NOT pip them here.
-# On Mac / x86 Linux: ultralytics pulls a compatible torch automatically, or uncomment:
-# torch>=2.2.0
-# torchvision>=0.17.0
+ultralytics>=8.1.0          # YOLO pose model + BoT-SORT tracking
+numpy>=1.24.0,<2            # <2: the Jetson torch build is compiled against NumPy 1.x (NumPy 2 crashes it)
+opencv-python>=4.8.0,<4.10  # <4.10 keeps NumPy 1.x compatibility; opencv-python-headless if always headless
 
-# ─── Perception: detection + tracking + pose in a single pass ───────────────
-ultralytics>=8.1.0          # YOLO pose models + BoT-SORT tracking (pulls torch, pillow, pyyaml, ...)
+# For full speed, build a TensorRT engine on the Jetson:
+#   pip install onnx onnxslim        # export deps (NOT onnxruntime-gpu — no Jetson PyPI wheel)
+#   python export_engine.py          # writes yolo11n-pose.engine; tensorrt ships with JetPack
 
-# ─── Core / video I/O ───────────────────────────────────────────────────────
-numpy>=1.24.0
-opencv-python>=4.8.0        # full build (with GUI) — needed for the on-screen display window
-                            # use opencv-python-headless instead only if you always run headless
 
-# ─── Optional: export / run a TensorRT .engine on the Jetson ────────────────
-# tensorrt itself ships with JetPack; the lines below are only for building the engine.
-# onnx>=1.14.0
-# onnxruntime-gpu           # from NVIDIA's Jetson index (use plain onnxruntime on CPU / x86)
-
-# Note: feature_extraction/extract_features.py uses only the Python standard
-# library, so it runs in this environment (or any Python 3.9+) with no extra packages.
