@@ -926,7 +926,7 @@ def main() -> int:
     # ----------------------------------------------------------------------- #
     cfg = CollectorConfig(
         # --- perception / speed knobs ---
-        model="yolo11n-pose.engine", # built locally via export_engine.py (use "yolo11n-pose.pt" on a fresh clone)
+        model="yolo11n-pose.engine", # built locally on the Jetson (use "yolo11n-pose.pt" on a fresh clone)
         tracker="bytetrack.yaml",    # FPS: lighter than botsort.yaml on a fixed camera (no motion comp.)
         imgsz=640,                   # FPS: lower (e.g. 480) trades a little accuracy for speed
         # --- camera / geometry ---
