@@ -18,5 +18,5 @@ File name: `YYYY-MM-DD_HHMMSS_NNNN_id<track>_<label>`. Nothing is deleted —
 filtered clips are sorted into `removed/<reason>/`. See
 `../data_collection/README.md` for the JSON schema.
 
-(This folder is intentionally kept in version control via `.gitkeep`; the
+(This folder is intentionally kept in version control via this README; the
 recordings themselves are data, not code.)
