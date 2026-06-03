@@ -15,13 +15,25 @@ recordings.
 ## Scripts
 
 - `build_masterdata.py` — cleans the raw recordings and builds `MasterData/`.
-  Writes a duplicate-report CSV alongside the dataset.
+  Also writes `MasterData/duplicate_report.csv`, listing the clip pairs it
+  dropped as duplicates.
 - `extract_pose.py` — runs MediaPipe Pose on each clip and saves the landmarks
   as `*_pose.json`. This is the prerequisite for the pose-based ablation
   conditions in RQ1.
 - `data_coverage_tte_window.py` — reports how many usable enter/pass samples
   remain at each time-to-event (TTE) window. Useful as a sanity check on the
   cleaned dataset before training.
+
+## One-time setup — the pose model
+
+`extract_pose.py` needs the MediaPipe pose model in this folder
+(`0_data_cleaning/`); it is found automatically from anywhere once it is here.
+Download it once:
+
+```bash
+curl -L -o 0_data_cleaning/pose_landmarker_lite.task \
+  https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task
+```
 
 ## Run order
 

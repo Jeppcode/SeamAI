@@ -36,6 +36,10 @@ A detected flag indicates whether MediaPipe found a person in that frame.
     python extract_pose.py                # skip already-processed files
     python extract_pose.py --overwrite    # re-process everything
 
+Needs the MediaPipe model `pose_landmarker_lite.task` in this folder
+(0_data_cleaning/) — a one-time download, see README.md. It is resolved next
+to this script, so it is found no matter which folder you run from.
+
 ~2-5 minutes for the full dataset on CPU.
 """
 
@@ -75,7 +79,9 @@ LANDMARK_IDS = {
 
 SKIP_FOLDERS   = {"corrupt", "exit", "removed"}
 DATA_ROOT      = Path(__file__).resolve().parents[1] / "MasterData"
-MODEL_PATH     = Path("pose_landmarker_lite.task")
+# MediaPipe pose model — resolved next to this script, so it is found no matter
+# which folder you launch from. One-time download (see README.md).
+MODEL_PATH     = Path(__file__).resolve().parent / "pose_landmarker_lite.task"
 
 
 def find_pairs(data_root: Path):
@@ -234,8 +240,8 @@ def main():
 
     if not MODEL_PATH.exists():
         print(f"ERROR: Model file not found: {MODEL_PATH}")
-        print("Download it with:")
-        print("  curl -L -o pose_landmarker_lite.task \\")
+        print("Download it once with:")
+        print(f"  curl -L -o '{MODEL_PATH}' \\")
         print("    https://storage.googleapis.com/mediapipe-models/pose_landmarker/"
               "pose_landmarker_lite/float16/latest/pose_landmarker_lite.task")
         sys.exit(1)

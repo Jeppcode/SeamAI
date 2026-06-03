@@ -26,9 +26,9 @@ protocol as train_ablation.py to ensure comparability.
 
 Output
 ------
-  results/hp_grid_results.csv       — full results (one row per cell)
-  results/hp_sensitivity.csv        — summary: best HP per finalist
-  results/hp_sensitivity.png        — heatmap of hidden × dropout per model
+  outputs/results/hp_grid_results.csv       — full results (one row per cell)
+  outputs/results/hp_sensitivity.csv        — summary: best HP per finalist
+  outputs/results/hp_sensitivity.png        — heatmap of hidden × dropout per model
 
 Run
 ---

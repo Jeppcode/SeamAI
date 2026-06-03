@@ -27,8 +27,8 @@ from matplotlib.lines import Line2D
 # Paths
 # ---------------------------------------------------------------------------
 HERE = pathlib.Path(__file__).resolve().parent
-RESULTS = HERE / "results"
-FIGURES = HERE / "figures"
+RESULTS = HERE / "outputs" / "results"
+FIGURES = HERE / "outputs" / "figures"
 FIGURES.mkdir(exist_ok=True)
 
 # ---------------------------------------------------------------------------

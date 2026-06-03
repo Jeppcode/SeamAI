@@ -10,10 +10,10 @@ If select_gru_finalists has not been run yet, this script falls back to reading
 results/results_all.csv and re-running the selection logic locally.
 
 Output:
-    results/finalists.csv
-    results/finalists_per_tte.csv
-    figures/finalists_overview.png
-    figures/finalists_over_tte.png
+    outputs/results/finalists.csv
+    outputs/results/finalists_per_tte.csv
+    outputs/figures/finalists_overview.png
+    outputs/figures/finalists_over_tte.png
 """
 
 from pathlib import Path

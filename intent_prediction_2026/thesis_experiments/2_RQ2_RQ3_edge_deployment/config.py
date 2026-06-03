@@ -33,14 +33,15 @@ RQ1_FINALISTS_CSV = ABLATION_DIR / "results" / "gru_finalists.csv"
 # RQ1 structured ablation results (produced by train_ablation.py)
 RQ1_RESULTS_CSV = ABLATION_DIR / "results" / "results_all.csv"
 
-# Output directories
-CHECKPOINT_DIR = HERE / "checkpoints"
-ONNX_DIR = HERE / "onnx_models"
-RESULTS_DIR = HERE / "results"
-FIG_DIR = HERE / "figures"
+# Output directories — everything generated lands under outputs/
+OUTPUTS_DIR = HERE / "outputs"
+CHECKPOINT_DIR = OUTPUTS_DIR / "checkpoints"
+ONNX_DIR = OUTPUTS_DIR / "onnx"
+RESULTS_DIR = OUTPUTS_DIR / "results"
+FIG_DIR = OUTPUTS_DIR / "figures"
 
 for _d in [CHECKPOINT_DIR, ONNX_DIR, RESULTS_DIR, FIG_DIR]:
-    _d.mkdir(exist_ok=True)
+    _d.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
 # Experiment settings

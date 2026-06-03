@@ -12,8 +12,8 @@ NVIDIA Jetson Orin Nano Super) in real time.
 ## Everything runs on the Jetson
 
 The whole pipeline runs on one machine. Steps 1–3 train the GRU finalists and
-write them to `checkpoints/`; steps 4–9 benchmark on that same Jetson and load
-the checkpoints straight from `checkpoints/`. Nothing is copied between machines.
+write them to `outputs/checkpoints/`; steps 4–9 benchmark on that same Jetson and load
+the checkpoints straight from `outputs/checkpoints/`. Nothing is copied between machines.
 
 Training the GRU is small and hardware-agnostic, so running it on the Jetson is
 fine and keeps the pipeline a single command. The numbers that matter are the
@@ -54,16 +54,16 @@ and `--synthetic` (a quick check of steps 5–7 on random frames, no video neede
 | # | Script | Does | Needs |
 |---|--------|------|-------|
 | 1 | `step1_select_finalists.py` | Load/confirm the GRU finalists from RQ1 | RQ1 outputs |
-| 2 | `step2_train_finalists.py` | Train the 5 finalists → `checkpoints/gru_*.pt` | `MasterData/` |
+| 2 | `step2_train_finalists.py` | Train the 5 finalists → `outputs/checkpoints/gru_*.pt` | `MasterData/` |
 | 3 | `step3_validate_hyperparams.py` | Hyperparameter sensitivity check | `MasterData/` |
-| 4 | `step4_benchmark_classifier.py` | GRU inference latency (PyTorch / ONNX / INT8) | `checkpoints/` |
+| 4 | `step4_benchmark_classifier.py` | GRU inference latency (PyTorch / ONNX / INT8) | `outputs/checkpoints/` |
 | 5 | `step5_benchmark_perception.py` | YOLO frontend latency | clips |
-| 6 | `step6_benchmark_pipeline.py` | End-to-end perception + features + GRU (main RQ2 figure) | clips + `checkpoints/` |
+| 6 | `step6_benchmark_pipeline.py` | End-to-end perception + features + GRU (main RQ2 figure) | clips + `outputs/checkpoints/` |
 | 7 | `step7_benchmark_model_sizes.py` | YOLO size × precision (FP32 / FP16 / INT8) sweep | clips |
 | 8 | `step8_benchmark_gru_sizes.py` | GRU hidden-size sweep (a pruning proxy) | `MasterData/` |
 | 9 | `step9_benchmark_live_camera.py` | RQ3 end-to-end system latency | recorded clip or camera |
 
-The checkpoint flow is automatic: step 2 writes `checkpoints/gru_<config>_tte<TTE>.pt`,
+The checkpoint flow is automatic: step 2 writes `outputs/checkpoints/gru_<config>_tte<TTE>.pt`,
 and steps 4 and 6 read them from there. Run a benchmark before training and the
 script prints "run step2 first" rather than failing cryptically.
 
@@ -88,5 +88,6 @@ steps, and 200 + 2000 for the sub-millisecond GRU sweep.
 YOLO weights download automatically on first use, so they are not committed.
 TensorRT `.engine` files are built on the Jetson the first time a `[TRT]`
 configuration runs (they are tied to the device's GPU and TensorRT version), so
-they are not committed either. Results and figures are written into `results/`
-and `figures/` on demand and are regenerated rather than shipped.
+they are not committed either. Everything the scripts generate lands under `outputs/` (`checkpoints/`, `onnx/`,
+`results/`, `figures/`) — regenerated, not shipped. The auto-downloaded YOLO
+weights and `.engine` files sit in the folder itself and are gitignored.

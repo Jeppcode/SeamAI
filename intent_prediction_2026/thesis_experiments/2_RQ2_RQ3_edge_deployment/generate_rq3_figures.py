@@ -6,8 +6,8 @@ import os
 
 # Paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CSV_PATH = os.path.join(SCRIPT_DIR, "results", "rq3_system_summary.csv")
-OUT_DIR = os.path.join(SCRIPT_DIR, "figures")
+CSV_PATH = os.path.join(SCRIPT_DIR, "outputs", "results", "rq3_system_summary.csv")
+OUT_DIR = os.path.join(SCRIPT_DIR, "outputs", "figures")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 df = pd.read_csv(CSV_PATH)

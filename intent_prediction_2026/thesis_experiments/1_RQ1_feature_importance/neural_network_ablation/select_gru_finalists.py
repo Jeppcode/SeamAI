@@ -48,7 +48,7 @@ HERE = Path(__file__).resolve().parent
 RESULTS_CSV = HERE / "results" / "results_all.csv"
 
 # ---------------------------------------------------------------------------
-# Selection parameters
+# SETTINGS — selection weights (edit these)
 # ---------------------------------------------------------------------------
 ALPHA = 0.5          # penalty for within-TTE CV instability
 BETA = 0.5           # penalty for across-TTE sensitivity

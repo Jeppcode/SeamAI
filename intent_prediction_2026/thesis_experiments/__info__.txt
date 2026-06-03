@@ -18,7 +18,7 @@ Folders, in run order:
                        regression, random forest + SHAP, and an NN ablation).
   2_RQ2_RQ3_edge_deployment/  - RQ2/RQ3: classifier and perception benchmarks
                        on the edge device, plus live system latency.
-  demo/              - a standalone live-camera demo with a small trained model.
+  demo_open_house/   - a standalone open-house attention demo with a small trained model.
 
 The datasets and the generated results/plots are not included (large + they
 contain identifiable video). The READMEs explain how to rebuild them.

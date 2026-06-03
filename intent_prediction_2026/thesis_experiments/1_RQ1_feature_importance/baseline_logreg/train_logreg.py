@@ -77,7 +77,9 @@ from utils.feature_extractor import (
 )
 
 
-# CONFIG – edit these values to change the experiment
+# ──────────────────────────────────────────────────────────────────────────────
+# SETTINGS — edit these to change the run
+# ──────────────────────────────────────────────────────────────────────────────
 
 DATA_ROOT      = str(PROJECT_ROOT / "MasterData")
 OUTPUT_DIR     = str(SCRIPT_DIR / "results")

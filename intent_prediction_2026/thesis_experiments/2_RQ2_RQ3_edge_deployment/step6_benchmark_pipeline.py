@@ -32,9 +32,9 @@ For each combination, we measure:
     - Whether the 30 FPS target is met
 
 Output:
-    results/pipeline_benchmark.csv      — one row per (frontend x tier)
-    results/pipeline_pareto.csv         — Pareto-optimal combinations
-    figures/pipeline_fps_vs_accuracy.png — the main RQ2 figure
+    outputs/results/pipeline_benchmark.csv      — one row per (frontend x tier)
+    outputs/results/pipeline_pareto.csv         — Pareto-optimal combinations
+    outputs/figures/pipeline_fps_vs_accuracy.png — the main RQ2 figure
 
 Run on the Jetson:
     python step6_benchmark_pipeline.py --input-dir path/to/clips/

@@ -17,6 +17,8 @@ recordings is here.
 ```
 thesis_experiments/
   README.md            this file
+  RUN_ON_JETSON.md     full end-to-end run guide (every command, on the Jetson)
+  USAGE.md             setup + per-script options (when to pass --flags)
   __info__.txt         short orientation note
   requirements.txt     Python dependencies
   check_env.py         run first — checks your environment is set up
@@ -29,7 +31,7 @@ thesis_experiments/
   utils/              common code: feature extraction, datasets, models
   1_RQ1_feature_importance/    RQ1 — which features predict intent to enter
   2_RQ2_RQ3_edge_deployment/   RQ2/RQ3 — real-time feasibility on a Jetson
-  demo/                standalone live-camera demo (comes with a trained model)
+  demo_open_house/     standalone open-house attention demo (with a trained model)
 ```
 
 Each folder has its own README with the details.
@@ -70,6 +72,9 @@ python run_all.py
 Step 2 reuses the RQ1 ablation results, so run RQ1 before RQ2. Each script says
 on screen which inputs it needs and where it writes its outputs.
 
+For a full step-by-step walkthrough on the Jetson — setup, where to put the data,
+and every command — see `RUN_ON_JETSON.md`.
+
 ## Setup
 
 The code runs on macOS, x86 Linux, and the lab Jetson. On a laptop, a normal
@@ -85,6 +90,9 @@ python check_env.py        # confirms the key packages import
 On the Jetson, install PyTorch from NVIDIA's wheels first — see the notes at the
 top of `requirements.txt`. The TensorRT engine files used by the edge benchmarks
 are built on the Jetson itself; they are device-specific and are not committed.
+
+See `USAGE.md` for full setup (laptop and Jetson) and a per-script guide to the
+options each script takes.
 
 ## Data and results
 
