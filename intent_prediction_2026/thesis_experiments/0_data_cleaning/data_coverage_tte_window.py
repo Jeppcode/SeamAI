@@ -49,7 +49,7 @@ from utils.dataset_utils import load_all_samples, is_valid_sample
 from utils.feature_extractor import is_sample_usable
 
 # ---------------------------------------------------------------------------
-# Configuration
+# SETTINGS — edit these to change the run
 # ---------------------------------------------------------------------------
 TTE_VALUES = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5]
 WINDOW_VALUES = [0.5, 1.0, 1.5]

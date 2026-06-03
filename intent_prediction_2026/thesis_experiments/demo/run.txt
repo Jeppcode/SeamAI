@@ -1,3 +1,0 @@
-python demo/demo_live.py \
-  --model weights/gru_core3head.pt \
-  --norm weights/norm_stats.npz

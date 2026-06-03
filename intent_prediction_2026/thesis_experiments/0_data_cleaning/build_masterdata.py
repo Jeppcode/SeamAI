@@ -38,7 +38,7 @@ Notes:
 - For thesis/report readability, each JSON also gets:
   cleaning_result, cleaning_reason
 - Duplicate handling is deterministic: first occurrence is kept, later matches are removed.
-- A duplicate CSV report is written by default.
+- A duplicate-report CSV (duplicate_report.csv) is written inside MasterData/.
 """
 
 import argparse
@@ -673,10 +673,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--duplicate-report-csv",
         type=Path,
-        default=default_dst.parent / "MasterData_duplicate_report.csv",
+        default=default_dst / "duplicate_report.csv",
         help=(
-            "Path to write duplicate CSV report. "
-            "Default: MasterData_duplicate_report.csv in the repo root."
+            "Path to write the duplicate-report CSV. "
+            "Default: duplicate_report.csv inside MasterData/."
         ),
     )
     return p.parse_args()

@@ -34,8 +34,8 @@ bounding-box features (A4_core4, A2_traj6). Pose-dependent GRU models
 (B1, B4, B6) are automatically skipped for detection-only frontends.
 
 Output:
-    results/rq3_system_benchmark.csv       — per-frame timing for all configs
-    results/rq3_system_summary.csv         — aggregated statistics
+    outputs/results/rq3_system_benchmark.csv       — per-frame timing for all configs
+    outputs/results/rq3_system_summary.csv         — aggregated statistics
 
 Run on the Jetson:
     python step9_benchmark_live_camera.py --video benchmark_videos/rq3_system_clip/rq3_clip.mp4

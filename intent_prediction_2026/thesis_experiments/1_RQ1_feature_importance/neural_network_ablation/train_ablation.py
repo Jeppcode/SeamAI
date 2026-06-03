@@ -123,7 +123,7 @@ _RESULTS  = _HERE / "results"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# FIXED SETTINGS
+# SETTINGS — edit these to change the ablation  (window held fixed at 0.5 s)
 # ──────────────────────────────────────────────────────────────────────────────
 
 WINDOW_SECONDS = 0.5                         # fixed observation window

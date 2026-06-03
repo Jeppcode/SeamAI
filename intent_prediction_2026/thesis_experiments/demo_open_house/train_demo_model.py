@@ -3,8 +3,8 @@
 train_demo_model.py  —  Standalone training script for the open-house demo.
 
 Trains a Core-3 + head (raw) GRU model at TTE=1.5 s and exports:
-    demo/weights/gru_core3head.pt  — model state_dict
-    demo/weights/norm_stats.npz    — z-score mean & std (shape (7,) each)
+    demo_open_house/weights/gru_core3head.pt  — model state_dict
+    demo_open_house/weights/norm_stats.npz    — z-score mean & std (shape (7,) each)
 
 This script is entirely self-contained — it does NOT import from
 the pipeline's utils/ module.  All required logic is inlined below.
@@ -20,14 +20,14 @@ Optional *_pose.json sidecars next to each trajectory improve head features.
 
 Run from the repository root (recommended):
 
-    python demo/train_demo_model.py
+    python demo_open_house/train_demo_model.py
 
-That uses MasterData/ at the repo root and writes weights under demo/weights/.
+That uses MasterData/ at the repo root and writes weights under demo_open_house/weights/.
 Override data location if needed:
 
-    python demo/train_demo_model.py --data /path/to/MasterData
+    python demo_open_house/train_demo_model.py --data /path/to/MasterData
 
-You can also run inside demo/; defaults still resolve to ../MasterData and ./weights/.
+You can also run inside demo_open_house/; defaults still resolve to ../MasterData and ./weights/.
 """
 
 import argparse
@@ -86,7 +86,7 @@ DEVICE = (
     else torch.device("cpu")
 )
 
-# Repo layout: demo/train_demo_model.py → parent.parent == pipeline root
+# Repo layout: demo_open_house/train_demo_model.py → parent.parent == pipeline root
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DATA_ROOT = _REPO_ROOT / "MasterData"
 DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parent / "weights"
@@ -617,7 +617,7 @@ def main():
         metavar="DIR",
         help=(
             "MasterData directory with enter/ and pass/ (default: "
-            "<repo>/MasterData, next to demo/)"
+            "<repo>/MasterData, next to demo_open_house/)"
         ),
     )
     parser.add_argument(
@@ -631,7 +631,7 @@ def main():
         metavar="DIR",
         help=(
             "Directory for gru_core3head.pt and norm_stats.npz "
-            "(default: demo/weights next to this script)"
+            "(default: demo_open_house/weights next to this script)"
         ),
     )
     args = parser.parse_args()
@@ -642,7 +642,7 @@ def main():
             f"ERROR: Data directory not found: {data_root}\n"
             "Place cleaned data in MasterData/ at the repo root, or pass "
             "an explicit path:\n"
-            "  python demo/train_demo_model.py --data /path/to/MasterData"
+            "  python demo_open_house/train_demo_model.py --data /path/to/MasterData"
         )
         sys.exit(1)
 
@@ -846,7 +846,7 @@ def main():
     print(f"  Model params: {n_params}")
 
     print(f"\n{'='*60}")
-    print("  Done! Copy demo/weights/ to Jetson (or use paths below) and run:")
+    print("  Done! Copy demo_open_house/weights/ to Jetson (or use paths below) and run:")
     print("  cd demo && python demo_live.py --model weights/gru_core3head.pt "
           "--norm weights/norm_stats.npz")
     print(f"{'='*60}")

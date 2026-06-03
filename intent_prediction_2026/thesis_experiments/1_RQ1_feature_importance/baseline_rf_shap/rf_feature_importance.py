@@ -68,7 +68,7 @@ from utils.feature_extractor import (
 )
 
 # ──────────────────────────────────────────────────────────────────────────────
-# CONFIGURATION
+# SETTINGS — edit these to change the run
 # ──────────────────────────────────────────────────────────────────────────────
 
 DATA_ROOT = str(PROJECT_ROOT / "MasterData")

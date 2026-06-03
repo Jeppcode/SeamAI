@@ -22,9 +22,9 @@ inference as it would run on edge hardware.
 
 Output
 ------
-  results/benchmark_latency.csv    — one row per (model × mode)
-  results/benchmark_summary.png    — grouped bar chart: latency vs model
-  results/benchmark_fps.png        — FPS vs input dimension
+  outputs/results/benchmark_latency.csv    — one row per (model × mode)
+  outputs/results/benchmark_summary.png    — grouped bar chart: latency vs model
+  outputs/results/benchmark_fps.png        — FPS vs input dimension
 
 Run
 ---

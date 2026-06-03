@@ -12,8 +12,8 @@ current hidden_size=16 strikes the right balance between capacity and
 efficiency (larger sizes don't improve accuracy on this dataset).
 
 Output:
-    results/gru_size_benchmark.csv — latency per hidden size
-    figures/rq2_gru_size_comparison.pdf — latency + accuracy vs hidden size
+    outputs/results/gru_size_benchmark.csv — latency per hidden size
+    outputs/figures/rq2_gru_size_comparison.pdf — latency + accuracy vs hidden size
 
 Run:
     python step8_benchmark_gru_sizes.py
@@ -39,7 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from utils.models import IntentGRU
 
 # ---------------------------------------------------------------------------
-# Configuration
+# SETTINGS — edit these to change the run
 # ---------------------------------------------------------------------------
 HIDDEN_SIZES = [4, 8, 16, 32, 64, 128]
 
