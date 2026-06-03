@@ -223,7 +223,9 @@ def run_holdout_evaluation(X, y):
     # Rows = true label, columns = predicted label
     # [0,0] = correct "pass",  [1,1] = correct "enter"
     # [0,1] = false "enter",   [1,0] = missed "enter"
-    cm = confusion_matrix(y_test, y_pred)
+    # labels=[0, 1] forces a 2x2 matrix even if the (small) test split happens
+    # to contain only one class — otherwise confusion_matrix returns 1x1.
+    cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
     print("\n  Confusion matrix (rows=true, cols=predicted):")
     print(f"                    Pred pass    Pred enter")
     print(f"  True pass   :       {cm[0][0]:4d}          {cm[0][1]:4d}")
@@ -367,8 +369,15 @@ def plot_confusion_matrix_heatmap(y_test, y_pred, tte, window, output_dir):
     """
     Seaborn heatmap showing counts and row-normalised percentages.
     """
-    cm = confusion_matrix(y_test, y_pred)
-    cm_pct = cm.astype(float) / cm.sum(axis=1, keepdims=True) * 100.0
+    # labels=[0, 1] forces a 2x2 matrix even if the (small) test split happens
+    # to contain only one class — otherwise confusion_matrix returns 1x1.
+    cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
+    # Row-normalise to percentages; guard against empty rows (a class with no
+    # true samples in a tiny test split) so we show 0% instead of NaN.
+    row_sums = cm.sum(axis=1, keepdims=True)
+    cm_pct = np.divide(cm.astype(float), row_sums,
+                       out=np.zeros((2, 2), dtype=float),
+                       where=row_sums != 0) * 100.0
 
     annot = np.empty_like(cm, dtype=object)
     for i in range(2):

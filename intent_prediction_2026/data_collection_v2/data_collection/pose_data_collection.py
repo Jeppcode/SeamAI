@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 """
-Author: Jesper Malmgren
-e-mail: malmgren.jesper@gmail.com
-
 pose_data_collection.py
 
 Live data collection for the smart-door pedestrian dataset. A reworked version

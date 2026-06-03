@@ -904,8 +904,13 @@ def plot_confusion_matrix_cv(y_true, y_pred, tte, window, bal_acc,
     Every sample is predicted exactly once (when held out), so this CM
     reflects generalisation performance across the full dataset.
     """
-    cm = sk_confusion_matrix(y_true, y_pred)
-    cm_pct = cm.astype(float) / cm.sum(axis=1, keepdims=True) * 100.0
+    # labels=[0, 1] keeps the matrix 2x2 even if a class is absent (tiny data),
+    # and the guarded division shows 0% instead of NaN for an empty row.
+    cm = sk_confusion_matrix(y_true, y_pred, labels=[0, 1])
+    row_sums = cm.sum(axis=1, keepdims=True)
+    cm_pct = np.divide(cm.astype(float), row_sums,
+                       out=np.zeros((2, 2), dtype=float),
+                       where=row_sums != 0) * 100.0
 
     annot = np.empty_like(cm, dtype=object)
     for i in range(2):

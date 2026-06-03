@@ -2,7 +2,7 @@
 # requirements.txt — thesis_experiments
 #
 # Pedestrian intent prediction for smart door systems
-# KTH / RISE — Jesper Malmgren
+# KTH degree project at RISE
 #
 # Dependencies to reproduce the full pipeline: data cleaning, feature
 # extraction, model training (RQ1), edge benchmarking (RQ2), and system
