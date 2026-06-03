@@ -1,6 +1,6 @@
 # thesis_experiments
 
-The experiments behind Jesper Malmgren's master's thesis (2026): predicting
+The experiments behind a KTH master's thesis (2026): predicting
 whether a pedestrian approaching a door intends to **enter** or just **pass by**,
 and checking whether such a model can run in real time on edge hardware.
 

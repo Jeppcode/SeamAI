@@ -1,7 +1,7 @@
 For future user
 ##################################################################################
 
-This folder holds the experiments from Jesper Malmgren's master's thesis (2026):
+This folder holds the experiments from a KTH master's thesis (2026):
 predicting whether a pedestrian approaching a door intends to enter or pass by,
 and testing whether the model can run in real time on a Jetson edge device.
 
